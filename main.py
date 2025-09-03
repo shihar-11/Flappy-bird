@@ -21,6 +21,9 @@ pipe_height = 512
 
 velocity_x = -2
 
+score = 0
+game_over = False
+
 class Pipe(pygame.Rect):
     def __init__(self, img):
         pygame.Rect.__init__(self, pipe_x, pipe_y, pipe_width, pipe_height)
@@ -40,7 +43,7 @@ pipes = []
 def create_pipes():
     random_pipe_y = pipe_y - pipe_height/6 - random.random()*(pipe_height/2)
     opening_space = GAME_HEIGHT/4
-    
+
     top_pipe = Pipe(top_pipe_image)
     top_pipe.y = random_pipe_y
     pipes.append(top_pipe)
@@ -50,9 +53,22 @@ def create_pipes():
     pipes.append(bottom_pipe)
 
 def move_pipe():
+    global score, game_over
+
+    if bird.y > GAME_HEIGHT:
+        game_over = True
+        return
      
     for pipe in pipes:
         pipe.x += velocity_x
+
+        if not pipe.passed and bird.x > pipe.x + pipe.width:
+            score += 0.5
+            pipe.passed = True
+
+        if bird.colliderect(pipe):
+            game_over = True
+            return
 
     while len(pipes) > 0 and pipes[0].x < -pipe_width:
         pipes.pop(0)
@@ -80,15 +96,20 @@ def move():
     bird.y += bird.velocity_y
     bird.y = max(bird.y ,0)
 
-    if bird.y + BIRD_HEIGHT > FLOOR_Y:
-        bird.y = FLOOR_Y - BIRD_HEIGHT
-
 def draw():
     window.blit(background_image, (0,0))
     window.blit(bird_image, bird)
     
     for pipe in pipes:
         window.blit(pipe.img, pipe)
+    
+    text_str = str(int(score))
+    if game_over:
+        text_str = "Game Over: " + text_str
+
+    text_font = pygame.font.SysFont("Comic Sans MS", 45)
+    text_render = text_font.render(text_str, True, "white")
+    window.blit(text_render, (5, 0))
 
 while True:
     for event in pygame.event.get():
@@ -96,15 +117,22 @@ while True:
             pygame.quit()
             exit()
 
-        if event.type == create_pipes_timer:
+        if event.type == create_pipes_timer and not game_over:
             create_pipes()
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_SPACE]:
         bird.velocity_y = BIRD_VELOCITY_Y
+            
+        if game_over:
+            bird.y = BIRD_Y
+            pipes.clear()
+            score = 0
+            game_over = False
 
-    move_pipe()
-    move()
-    draw()
-    pygame.display.update()
-    clock.tick(60)
+    if not game_over:
+        move_pipe()
+        move()
+        draw()
+        pygame.display.update()
+        clock.tick(60)
